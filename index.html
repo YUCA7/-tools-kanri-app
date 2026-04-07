@@ -551,6 +551,124 @@
     display: flex; align-items: center; justify-content: center; gap: 8px;
   }
   .btn-hist:active { background: #f0f0f0; }
+
+  /* ── Checkout status badges ── */
+  .badge-row {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px;
+  }
+  .badge-checkout {
+    display: inline-block;
+    background: #fff3e0;
+    color: #e65100;
+    border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-overdue {
+    display: inline-block;
+    background: #ffebee;
+    color: #c62828;
+    border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; } 50% { opacity:.55; }
+  }
+  .tool-card.overdue { outline: 2px solid #e53935; }
+
+  /* ── Checkout confirm area ── */
+  .confirm-area {
+    display: none;
+    padding: 16px 18px;
+    background: #f8f9fa;
+    border-top: 2px solid var(--primary);
+  }
+  .confirm-area.show { display: block; }
+  .confirm-dest {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+  .confirm-dest span { color: var(--primary); }
+  .due-date-group { margin-bottom: 14px; }
+  .due-date-group label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 6px; }
+  .due-date-group input {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    font-size: 15px;
+    background: #fff;
+    outline: none;
+    width: 100%;
+  }
+  .due-date-group input:focus { border-color: var(--primary); }
+  .confirm-btns { display: flex; gap: 10px; }
+  .btn-confirm {
+    flex: 1;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--success);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-confirm.return { background: var(--primary); }
+  .btn-confirm:active { opacity: .85; }
+  .btn-back {
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: #f0f0f0;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ── Unreturned list ── */
+  .unreturned-list { display: flex; flex-direction: column; gap: 12px; }
+  .unreturned-item {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px;
+    border: 1.5px solid var(--border);
+  }
+  .unreturned-item.overdue { border-color: #e53935; background: #fff5f5; }
+  .unreturned-item .ui-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+  .unreturned-item .ui-thumb {
+    width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
+    background: #e8eaf0; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+  }
+  .unreturned-item .ui-meta { flex: 1; min-width: 0; }
+  .unreturned-item .ui-id { font-size: 11px; color: var(--primary); font-weight: 700; }
+  .unreturned-item .ui-name { font-size: 15px; font-weight: 700; }
+  .unreturned-item .ui-detail {
+    font-size: 13px; color: var(--muted); margin-bottom: 10px; line-height: 1.7;
+  }
+  .unreturned-item .ui-detail strong { color: var(--text); }
+  .unreturned-item .ui-detail .overdue-label { color: #c62828; font-weight: 700; }
+  .btn-notify {
+    width: 100%;
+    padding: 11px;
+    border-radius: 10px;
+    background: #e8f0fe;
+    color: var(--primary);
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-notify:active { background: #d2e3fc; }
+  .unreturned-empty { text-align: center; color: var(--muted); padding: 32px 0; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -587,9 +705,20 @@
       <div class="person-btn-wrap" id="personBtnWrap"></div>
       <input class="person-free-input" id="personFreeInput" placeholder="直接入力することもできます" oninput="onPersonFreeInput()">
     </div>
-    <div class="loc-buttons">
+    <div class="loc-buttons" id="locButtonsArea">
       <p>変更先の現場を選択</p>
       <div class="loc-btn-grid" id="locBtnGrid"></div>
+    </div>
+    <div class="confirm-area" id="confirmArea">
+      <div class="confirm-dest" id="confirmDestLabel"></div>
+      <div class="due-date-group" id="dueDateGroup">
+        <label>📅 返却予定日（任意）</label>
+        <input type="date" id="dueDateInput">
+      </div>
+      <div class="confirm-btns">
+        <button class="btn-back" onclick="cancelConfirm()">戻る</button>
+        <button class="btn-confirm" id="btnConfirm" onclick="confirmCheckout()">貸し出し確定</button>
+      </div>
     </div>
     <button class="btn-hist" onclick="openHistory(currentToolId)">
       📋 変更履歴を見る
@@ -647,6 +776,7 @@
       <div class="admin-tab" onclick="switchTab(1)">工具一覧</div>
       <div class="admin-tab" onclick="switchTab(2)">現場管理</div>
       <div class="admin-tab" onclick="switchTab(3)">担当者</div>
+      <div class="admin-tab" onclick="switchTab(4)" id="tabUnreturnedBtn">未返却</div>
     </div>
 
     <!-- Tab 0: Add Tool -->
@@ -694,6 +824,11 @@
       <div class="loc-list" id="personList"></div>
       <button class="btn-add-loc" onclick="addPerson()">＋ 担当者を追加</button>
       <button class="btn-primary" onclick="savePersons()">担当者を保存</button>
+    </div>
+
+    <!-- Tab 4: Unreturned -->
+    <div class="admin-pane" id="tabUnreturned">
+      <div id="unreturnedList"></div>
     </div>
   </div>
 </div>
@@ -752,7 +887,10 @@ function loadData() {
   const p = localStorage.getItem('persons_data');
   const tools = t ? JSON.parse(t) : JSON.parse(JSON.stringify(DEFAULT_TOOLS));
   // 既存データにhistoryがない場合は補完
-  tools.forEach(tool => { if (!tool.history) tool.history = []; });
+  tools.forEach(tool => {
+    if (!tool.history) tool.history = [];
+    if (tool.dueDate === undefined) tool.dueDate = null;
+  });
   return {
     tools,
     locations: l ? JSON.parse(l) : [...DEFAULT_LOCATIONS],
@@ -768,6 +906,7 @@ function saveData(data) {
 let data = loadData();
 let currentToolId = null;
 let currentPerson = null;
+let pendingLoc = null;
 let editPhotoData = null;
 let newPhotoData = null;
 
@@ -790,8 +929,13 @@ function renderTools() {
     grid.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>該当する工具はありません</p></div>`;
     return;
   }
-  grid.innerHTML = filtered.map(t => `
-    <div class="tool-card" onclick="openUpdate('${t.id}')">
+  grid.innerHTML = filtered.map(t => {
+    const checkedOut = isCheckedOut(t);
+    const overdue = isOverdue(t);
+    const last = getLastHistory(t);
+    const person = (checkedOut && last) ? last.person : null;
+    return `
+    <div class="tool-card ${overdue ? 'overdue' : ''}" onclick="openUpdate('${t.id}')">
       ${t.photo
         ? `<img class="photo" src="${t.photo}" alt="${t.name}">`
         : `<div class="photo-placeholder">🔧</div>`}
@@ -799,9 +943,13 @@ function renderTools() {
         <div class="tool-id">${t.id}</div>
         <div class="tool-name">${escHtml(t.name)}</div>
         <span class="location-badge ${getLocationClass(t.location)}">${escHtml(t.location)}</span>
+        <div class="badge-row">
+          ${checkedOut ? `<span class="badge-checkout">貸出中${person ? `：${escHtml(person)}` : ''}</span>` : ''}
+          ${overdue ? `<span class="badge-overdue">⚠ 期限超過</span>` : ''}
+        </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function escHtml(s) {
@@ -829,8 +977,11 @@ function openUpdate(id) {
   `;
 
   currentPerson = null;
+  pendingLoc = null;
   renderPersonButtons();
   document.getElementById('personFreeInput').value = '';
+  document.getElementById('confirmArea').classList.remove('show');
+  document.getElementById('locButtonsArea').style.display = '';
   renderLocButtons(tool.location);
   openOverlay('overlayUpdate');
 }
@@ -869,8 +1020,8 @@ function renderLocButtons(current) {
 function updateLocation(loc) {
   const tool = data.tools.find(t => t.id === currentToolId);
   if (!tool) return;
+  if (loc === tool.location) return;
 
-  // 担当者チェック（直接入力も考慮）
   const freeVal = document.getElementById('personFreeInput').value.trim();
   const person = freeVal || currentPerson;
   if (!person) {
@@ -878,21 +1029,98 @@ function updateLocation(loc) {
     return;
   }
 
+  pendingLoc = loc;
+  const isReturn = (loc === '倉庫');
+  const confirmArea = document.getElementById('confirmArea');
+  const dueDateGroup = document.getElementById('dueDateGroup');
+  const btnConfirm = document.getElementById('btnConfirm');
+  const label = document.getElementById('confirmDestLabel');
+
+  if (isReturn) {
+    label.innerHTML = `<span style="color:var(--primary)">倉庫</span> に返却しますか？`;
+    dueDateGroup.style.display = 'none';
+    btnConfirm.textContent = '返却完了';
+    btnConfirm.className = 'btn-confirm return';
+  } else {
+    label.innerHTML = `<span style="color:var(--success)">${escHtml(loc)}</span> に貸し出しますか？`;
+    dueDateGroup.style.display = '';
+    // デフォルト日付: 1週間後
+    const def = new Date(); def.setDate(def.getDate() + 7);
+    document.getElementById('dueDateInput').value = def.toISOString().slice(0,10);
+    btnConfirm.textContent = '貸し出し確定';
+    btnConfirm.className = 'btn-confirm';
+  }
+
+  document.getElementById('locButtonsArea').style.display = 'none';
+  confirmArea.classList.add('show');
+}
+
+function cancelConfirm() {
+  pendingLoc = null;
+  document.getElementById('confirmArea').classList.remove('show');
+  document.getElementById('locButtonsArea').style.display = '';
+}
+
+function confirmCheckout() {
+  const tool = data.tools.find(t => t.id === currentToolId);
+  if (!tool || !pendingLoc) return;
+
+  const freeVal = document.getElementById('personFreeInput').value.trim();
+  const person = freeVal || currentPerson;
   const fromLoc = tool.location;
-  tool.location = loc;
+  const isReturn = (pendingLoc === '倉庫');
+  const dueDate = (!isReturn && document.getElementById('dueDateInput').value)
+    ? document.getElementById('dueDateInput').value : null;
+
+  tool.location = pendingLoc;
+  tool.dueDate = isReturn ? null : dueDate;
   if (!tool.history) tool.history = [];
   tool.history.unshift({
     date: new Date().toISOString(),
     person,
     from: fromLoc,
-    to: loc
+    to: pendingLoc,
+    dueDate,
+    type: isReturn ? 'return' : 'checkout'
   });
 
   saveData(data);
   renderTools();
-  document.querySelector('.current-loc-val').textContent = loc;
-  renderLocButtons(loc);
-  showToast(`📍 ${person}：${tool.name} → ${loc}`);
+  document.querySelector('.current-loc-val').textContent = pendingLoc;
+
+  document.getElementById('confirmArea').classList.remove('show');
+  document.getElementById('locButtonsArea').style.display = '';
+  renderLocButtons(pendingLoc);
+  pendingLoc = null;
+
+  if (isReturn) {
+    showToast(`✅ ${person}：${tool.name} 返却完了`);
+  } else {
+    const dueTxt = dueDate ? `（返却予定 ${dueDate}）` : '';
+    showToast(`📦 ${person}：${tool.name} → ${tool.location}${dueTxt}`);
+  }
+}
+
+// ── Checkout helpers ──────────────────────────────────
+function isCheckedOut(tool) {
+  return tool.location !== '倉庫';
+}
+function isOverdue(tool) {
+  if (!isCheckedOut(tool) || !tool.dueDate) return false;
+  return new Date(tool.dueDate) < new Date(new Date().toDateString());
+}
+function getLastHistory(tool) {
+  return (tool.history && tool.history.length) ? tool.history[0] : null;
+}
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function formatDateShort(ymd) {
+  if (!ymd) return '';
+  const [y,m,d] = ymd.split('-');
+  return `${y}/${m}/${d}`;
 }
 
 // ── History ────────────────────────────────────────────
@@ -906,17 +1134,17 @@ function openHistory(id) {
   } else {
     list.innerHTML = `<div class="history-list">` +
       tool.history.map(h => {
-        const d = new Date(h.date);
-        const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        const dateStr = formatDate(h.date);
         return `
           <div class="history-item">
-            <div class="hist-date">🕐 ${dateStr}</div>
+            <div class="hist-date">🕐 ${dateStr}${h.type === 'return' ? ' ✅ 返却' : h.type === 'checkout' ? ' 📦 貸出' : ''}</div>
             <div class="hist-person">👤 ${escHtml(h.person)}</div>
             <div class="hist-move">
               <span class="hist-loc-from">${escHtml(h.from)}</span>
               <span class="hist-arrow">→</span>
               <span class="hist-loc-to">${escHtml(h.to)}</span>
             </div>
+            ${h.dueDate ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">返却予定：${formatDateShort(h.dueDate)}</div>` : ''}
           </div>`;
       }).join('') +
     `</div>`;
@@ -1020,6 +1248,11 @@ function openAdmin() {
   renderAdminToolList();
   renderLocList();
   renderPersonList();
+  // 未返却バッジ更新
+  const count = data.tools.filter(t => isCheckedOut(t)).length;
+  const btn = document.getElementById('tabUnreturnedBtn');
+  btn.textContent = `未返却${count ? `(${count})` : ''}`;
+  if (count) btn.style.color = '#e53935';
   switchTab(0);
   openOverlay('overlayAdmin');
 }
@@ -1027,6 +1260,7 @@ function openAdmin() {
 function switchTab(i) {
   document.querySelectorAll('.admin-tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
   document.querySelectorAll('.admin-pane').forEach((p, idx) => p.classList.toggle('active', idx === i));
+  if (i === 4) renderUnreturnedList();
 }
 
 function refreshAdminToolId() {
@@ -1194,6 +1428,77 @@ function saveLocations() {
   saveData(data);
   refreshLocSelect('newToolLoc');
   showToast('✅ 現場名を保存しました');
+}
+
+// ── Unreturned List ────────────────────────────────────
+function renderUnreturnedList() {
+  const list = document.getElementById('unreturnedList');
+  const unreturned = data.tools.filter(t => isCheckedOut(t));
+  if (!unreturned.length) {
+    list.innerHTML = `<div class="unreturned-empty">✅ 未返却の工具はありません</div>`;
+    return;
+  }
+  list.innerHTML = `<div class="unreturned-list">` + unreturned.map(t => {
+    const last = getLastHistory(t);
+    const overdue = isOverdue(t);
+    const person = last ? last.person : '不明';
+    const since = last ? formatDate(last.date) : '';
+    const dueTxt = t.dueDate ? formatDateShort(t.dueDate) : '未設定';
+    return `
+      <div class="unreturned-item ${overdue ? 'overdue' : ''}">
+        <div class="ui-header">
+          ${t.photo
+            ? `<img class="ui-thumb" src="${t.photo}" style="width:44px;height:44px;border-radius:8px;object-fit:cover">`
+            : `<div class="ui-thumb">🔧</div>`}
+          <div class="ui-meta">
+            <div class="ui-id">${t.id}</div>
+            <div class="ui-name">${escHtml(t.name)}</div>
+          </div>
+          ${overdue ? `<span class="badge-overdue">⚠ 期限超過</span>` : `<span class="badge-checkout">貸出中</span>`}
+        </div>
+        <div class="ui-detail">
+          📍 <strong>${escHtml(t.location)}</strong>　👤 <strong>${escHtml(person)}</strong><br>
+          貸出：${since}<br>
+          返却予定：${overdue
+            ? `<span class="overdue-label">${dueTxt}（超過）</span>`
+            : `<strong>${dueTxt}</strong>`}
+        </div>
+        <button class="btn-notify" onclick="sendNotification('${t.id}')">
+          📨 通知文をコピー／送る
+        </button>
+      </div>`;
+  }).join('') + `</div>`;
+}
+
+function sendNotification(id) {
+  const tool = data.tools.find(t => t.id === id);
+  if (!tool) return;
+  const last = getLastHistory(tool);
+  const person = last ? last.person : '担当者';
+  const dueTxt = tool.dueDate ? `\n返却予定日：${formatDateShort(tool.dueDate)}` : '';
+  const overdue = isOverdue(tool);
+  const msg = `【工具${overdue ? '返却期限超過' : '返却'}のお願い】\n${person}さん、${tool.location}にある「${tool.name}（${tool.id}）」の倉庫への返却をお願いします。${dueTxt}`;
+
+  if (navigator.share) {
+    navigator.share({ text: msg }).catch(() => copyToClipboard(msg));
+  } else {
+    copyToClipboard(msg);
+  }
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋 通知文をコピーしました');
+  }).catch(() => {
+    // フォールバック
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 通知文をコピーしました');
+  });
 }
 
 // ── Person Management ──────────────────────────────────
