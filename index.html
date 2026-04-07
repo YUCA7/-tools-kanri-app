@@ -452,6 +452,105 @@
     font-size: 11px;
     font-weight: 700;
   }
+
+  /* ── Person selection ── */
+  .person-section {
+    padding: 14px 18px 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+  .person-section .section-label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .person-btn-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .person-btn {
+    padding: 9px 16px;
+    border-radius: 20px;
+    border: 2px solid var(--border);
+    background: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .person-btn.active {
+    border-color: #43a047;
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+  .person-free-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    font-size: 14px;
+    outline: none;
+    background: #fff;
+    color: var(--text);
+  }
+  .person-free-input:focus { border-color: #43a047; }
+
+  /* ── History log ── */
+  .history-list {
+    padding: 0 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .history-item {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 12px 14px;
+    border-left: 4px solid var(--primary);
+  }
+  .history-item .hist-date {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .history-item .hist-person {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2e7d32;
+    margin-bottom: 4px;
+  }
+  .history-item .hist-move {
+    font-size: 14px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hist-arrow { color: var(--muted); font-size: 16px; }
+  .hist-loc-from { color: var(--muted); }
+  .hist-loc-to { font-weight: 700; color: var(--primary); }
+  .history-empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 32px 0;
+    font-size: 14px;
+  }
+  .btn-hist {
+    margin: 10px 18px 0;
+    width: calc(100% - 36px);
+    padding: 13px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-hist:active { background: #f0f0f0; }
 </style>
 </head>
 <body>
@@ -483,10 +582,18 @@
       <button class="btn-close" onclick="closeOverlay('overlayUpdate')">×</button>
     </div>
     <div class="tool-summary" id="updateSummary"></div>
+    <div class="person-section">
+      <div class="section-label">👤 担当者を選択（必須）</div>
+      <div class="person-btn-wrap" id="personBtnWrap"></div>
+      <input class="person-free-input" id="personFreeInput" placeholder="直接入力することもできます" oninput="onPersonFreeInput()">
+    </div>
     <div class="loc-buttons">
       <p>変更先の現場を選択</p>
       <div class="loc-btn-grid" id="locBtnGrid"></div>
     </div>
+    <button class="btn-hist" onclick="openHistory(currentToolId)">
+      📋 変更履歴を見る
+    </button>
     <button class="btn-qr" onclick="openQrFromUpdate()">
       📷 QRコードを表示
     </button>
@@ -515,6 +622,18 @@
   </div>
 </div>
 
+<!-- History Sheet -->
+<div class="overlay center" id="overlayHistory" onclick="closeUpdate(event)">
+  <div class="sheet" id="sheetHistory">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" id="historyTitle">変更履歴</span>
+      <button class="btn-close" onclick="closeOverlay('overlayHistory')">×</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
 <!-- Admin Sheet -->
 <div class="overlay center" id="overlayAdmin" onclick="closeUpdate(event)">
   <div class="sheet" id="sheetAdmin">
@@ -527,6 +646,7 @@
       <div class="admin-tab active" onclick="switchTab(0)">工具追加</div>
       <div class="admin-tab" onclick="switchTab(1)">工具一覧</div>
       <div class="admin-tab" onclick="switchTab(2)">現場管理</div>
+      <div class="admin-tab" onclick="switchTab(3)">担当者</div>
     </div>
 
     <!-- Tab 0: Add Tool -->
@@ -566,6 +686,14 @@
       <div class="loc-list" id="locList"></div>
       <button class="btn-add-loc" onclick="addLocation()">＋ 現場を追加</button>
       <button class="btn-primary" onclick="saveLocations()">現場名を保存</button>
+    </div>
+
+    <!-- Tab 3: Person Management -->
+    <div class="admin-pane" id="tabPerson">
+      <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">担当者名を登録しておくと所在変更時にボタンで選択できます</p>
+      <div class="loc-list" id="personList"></div>
+      <button class="btn-add-loc" onclick="addPerson()">＋ 担当者を追加</button>
+      <button class="btn-primary" onclick="savePersons()">担当者を保存</button>
     </div>
   </div>
 </div>
@@ -611,27 +739,35 @@
 <script>
 // ── Data ──────────────────────────────────────────────
 const DEFAULT_LOCATIONS = ['A現場', 'B現場', 'C現場', '倉庫'];
+const DEFAULT_PERSONS = ['山田', '鈴木', '佐藤'];
 const DEFAULT_TOOLS = [
-  { id: 'KI-01', name: '電動ドリル', photo: '', location: '倉庫' },
-  { id: 'KI-02', name: 'インパクトドライバー', photo: '', location: 'A現場' },
-  { id: 'KI-03', name: '丸のこ', photo: '', location: 'B現場' },
+  { id: 'KI-01', name: '電動ドリル', photo: '', location: '倉庫', history: [] },
+  { id: 'KI-02', name: 'インパクトドライバー', photo: '', location: 'A現場', history: [] },
+  { id: 'KI-03', name: '丸のこ', photo: '', location: 'B現場', history: [] },
 ];
 
 function loadData() {
   const t = localStorage.getItem('tools_data');
   const l = localStorage.getItem('locations_data');
+  const p = localStorage.getItem('persons_data');
+  const tools = t ? JSON.parse(t) : JSON.parse(JSON.stringify(DEFAULT_TOOLS));
+  // 既存データにhistoryがない場合は補完
+  tools.forEach(tool => { if (!tool.history) tool.history = []; });
   return {
-    tools: t ? JSON.parse(t) : JSON.parse(JSON.stringify(DEFAULT_TOOLS)),
-    locations: l ? JSON.parse(l) : [...DEFAULT_LOCATIONS]
+    tools,
+    locations: l ? JSON.parse(l) : [...DEFAULT_LOCATIONS],
+    persons: p ? JSON.parse(p) : [...DEFAULT_PERSONS]
   };
 }
 function saveData(data) {
   localStorage.setItem('tools_data', JSON.stringify(data.tools));
   localStorage.setItem('locations_data', JSON.stringify(data.locations));
+  localStorage.setItem('persons_data', JSON.stringify(data.persons));
 }
 
 let data = loadData();
 let currentToolId = null;
+let currentPerson = null;
 let editPhotoData = null;
 let newPhotoData = null;
 
@@ -692,8 +828,33 @@ function openUpdate(id) {
     </div>
   `;
 
+  currentPerson = null;
+  renderPersonButtons();
+  document.getElementById('personFreeInput').value = '';
   renderLocButtons(tool.location);
   openOverlay('overlayUpdate');
+}
+
+function renderPersonButtons() {
+  const wrap = document.getElementById('personBtnWrap');
+  wrap.innerHTML = data.persons.map(p => `
+    <button class="person-btn ${p === currentPerson ? 'active' : ''}" onclick="selectPerson('${escHtml(p)}')">
+      ${escHtml(p)}
+    </button>
+  `).join('');
+}
+
+function selectPerson(name) {
+  currentPerson = name;
+  document.getElementById('personFreeInput').value = '';
+  renderPersonButtons();
+}
+
+function onPersonFreeInput() {
+  const val = document.getElementById('personFreeInput').value.trim();
+  currentPerson = val || null;
+  // ボタン選択を外す
+  document.querySelectorAll('.person-btn').forEach(b => b.classList.remove('active'));
 }
 
 function renderLocButtons(current) {
@@ -708,13 +869,59 @@ function renderLocButtons(current) {
 function updateLocation(loc) {
   const tool = data.tools.find(t => t.id === currentToolId);
   if (!tool) return;
+
+  // 担当者チェック（直接入力も考慮）
+  const freeVal = document.getElementById('personFreeInput').value.trim();
+  const person = freeVal || currentPerson;
+  if (!person) {
+    showToast('⚠ 担当者を選択または入力してください');
+    return;
+  }
+
+  const fromLoc = tool.location;
   tool.location = loc;
+  if (!tool.history) tool.history = [];
+  tool.history.unshift({
+    date: new Date().toISOString(),
+    person,
+    from: fromLoc,
+    to: loc
+  });
+
   saveData(data);
   renderTools();
-  // Refresh summary
   document.querySelector('.current-loc-val').textContent = loc;
   renderLocButtons(loc);
-  showToast(`📍 ${tool.name} → ${loc}`);
+  showToast(`📍 ${person}：${tool.name} → ${loc}`);
+}
+
+// ── History ────────────────────────────────────────────
+function openHistory(id) {
+  const tool = data.tools.find(t => t.id === id);
+  if (!tool) return;
+  document.getElementById('historyTitle').textContent = `${tool.id} ${tool.name} の履歴`;
+  const list = document.getElementById('historyList');
+  if (!tool.history || !tool.history.length) {
+    list.innerHTML = `<div class="history-empty">📭 変更履歴はまだありません</div>`;
+  } else {
+    list.innerHTML = `<div class="history-list">` +
+      tool.history.map(h => {
+        const d = new Date(h.date);
+        const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        return `
+          <div class="history-item">
+            <div class="hist-date">🕐 ${dateStr}</div>
+            <div class="hist-person">👤 ${escHtml(h.person)}</div>
+            <div class="hist-move">
+              <span class="hist-loc-from">${escHtml(h.from)}</span>
+              <span class="hist-arrow">→</span>
+              <span class="hist-loc-to">${escHtml(h.to)}</span>
+            </div>
+          </div>`;
+      }).join('') +
+    `</div>`;
+  }
+  openOverlay('overlayHistory');
 }
 
 // ── QR Code ────────────────────────────────────────────
@@ -812,6 +1019,7 @@ function openAdmin() {
   refreshLocSelect('newToolLoc');
   renderAdminToolList();
   renderLocList();
+  renderPersonList();
   switchTab(0);
   openOverlay('overlayAdmin');
 }
@@ -986,6 +1194,45 @@ function saveLocations() {
   saveData(data);
   refreshLocSelect('newToolLoc');
   showToast('✅ 現場名を保存しました');
+}
+
+// ── Person Management ──────────────────────────────────
+function renderPersonList() {
+  const list = document.getElementById('personList');
+  list.innerHTML = data.persons.map((p, i) => `
+    <div class="loc-item" id="personItem${i}">
+      <input type="text" value="${escHtml(p)}" id="personInput${i}" placeholder="担当者名">
+      <button class="btn-danger" onclick="removePerson(${i})">削除</button>
+    </div>
+  `).join('');
+}
+
+function addPerson() {
+  data.persons.push('新しい担当者');
+  renderPersonList();
+  const lastIdx = data.persons.length - 1;
+  const input = document.getElementById(`personInput${lastIdx}`);
+  if (input) { input.focus(); input.select(); }
+}
+
+function removePerson(i) {
+  data.persons.splice(i, 1);
+  renderPersonList();
+}
+
+function savePersons() {
+  const inputs = document.querySelectorAll('#personList input');
+  const newPersons = [];
+  let valid = true;
+  inputs.forEach(inp => {
+    const v = inp.value.trim();
+    if (!v) { valid = false; return; }
+    newPersons.push(v);
+  });
+  if (!valid) { showToast('⚠ 空の担当者名は保存できません'); return; }
+  data.persons = newPersons;
+  saveData(data);
+  showToast('✅ 担当者を保存しました');
 }
 
 // ── Overlay helpers ────────────────────────────────────
