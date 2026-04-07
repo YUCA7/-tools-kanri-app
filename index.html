@@ -508,6 +508,9 @@
         <div class="tool-name" id="qrToolName"></div>
       </div>
       <div class="qr-url" id="qrUrl"></div>
+      <button class="btn-primary" onclick="downloadQr()" style="margin-top:4px; width:100%">
+        📥 画像としてダウンロード
+      </button>
     </div>
   </div>
 </div>
@@ -740,6 +743,62 @@ function openQr(id) {
   });
 
   openOverlay('overlayQr');
+}
+
+function downloadQr() {
+  const tool = data.tools.find(t => t.id === currentToolId);
+  if (!tool) return;
+  const qrCanvas = document.querySelector('#qrCanvas canvas');
+  if (!qrCanvas) return;
+
+  const pad = 24;
+  const labelAreaTop = 48;   // 番号
+  const labelAreaBot = 56;   // 名前
+  const qrSize = qrCanvas.width;
+  const totalW = qrSize + pad * 2;
+  const totalH = labelAreaTop + qrSize + labelAreaBot + pad;
+
+  const out = document.createElement('canvas');
+  out.width = totalW;
+  out.height = totalH;
+  const ctx = out.getContext('2d');
+
+  // 背景
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, totalW, totalH);
+
+  // 枠線
+  ctx.strokeStyle = '#cccccc';
+  ctx.lineWidth = 2;
+  ctx.roundRect(2, 2, totalW - 4, totalH - 4, 12);
+  ctx.stroke();
+
+  // 工具番号（上）
+  ctx.fillStyle = '#1a73e8';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(tool.id, totalW / 2, pad + 22);
+
+  // QRコード
+  ctx.drawImage(qrCanvas, pad, labelAreaTop, qrSize, qrSize);
+
+  // 工具名（下）
+  ctx.fillStyle = '#1a1a2e';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center';
+  // 長い名前は縮小
+  let fontSize = 22;
+  ctx.font = `bold ${fontSize}px sans-serif`;
+  while (ctx.measureText(tool.name).width > totalW - pad * 2 && fontSize > 13) {
+    fontSize--;
+    ctx.font = `bold ${fontSize}px sans-serif`;
+  }
+  ctx.fillText(tool.name, totalW / 2, labelAreaTop + qrSize + 36);
+
+  const a = document.createElement('a');
+  a.href = out.toDataURL('image/png');
+  a.download = `工具QR_${tool.id}_${tool.name}.png`;
+  a.click();
 }
 
 function buildToolUrl(id) {
